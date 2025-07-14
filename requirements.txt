@@ -1,0 +1,21 @@
+Flask==3.0.0
+Flask-Login==0.6.3
+Flask-CORS==4.0.0
+pymongo==4.6.0
+bcrypt==4.1.2
+python-jose==3.3.0
+python-dotenv==1.0.0
+requests==2.31.0
+Pillow==10.1.0
+reportlab==4.0.7
+cloudinary==1.36.0
+huggingface-hub==0.20.3
+transformers==4.36.2
+torch==2.1.2
+numpy==1.24.3
+pandas==2.1.4
+gunicorn==21.2.0
+
+# Optional: speed up build & prevent errors
+setuptools==68.2.2
+wheel==0.41.2

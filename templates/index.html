@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Diagnosis AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .loading {
+            display: none !important;
+            visibility: hidden;
+            opacity: 0;
+        }
+        .loading.show {
+            display: inline-block !important;
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold">Medical Diagnosis AI</h1>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <a href="#diagnosis" class="hover:text-purple-200 transition-colors">Diagnosis</a>
+                    <a href="#history" class="hover:text-purple-200 transition-colors">History</a>
+                    <a href="#about" class="hover:text-purple-200 transition-colors">About</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Diagnosis Section -->
+        <section id="diagnosis" class="mb-12">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">AI-Powered Medical Diagnosis</h2>
+                    <p class="text-gray-600 text-lg">Upload medical images or describe symptoms for AI-assisted diagnosis</p>
+                </div>
+
+                <!-- Diagnosis Form -->
+                <div class="bg-white rounded-lg shadow-lg p-8 card-hover">
+                    <form id="diagnosisForm" class="space-y-6">
+                        <!-- Patient ID -->
+                        <div>
+                            <label for="patientId" class="block text-sm font-medium text-gray-700 mb-2">
+                                Patient ID (Optional)
+                            </label>
+                            <input type="text" id="patientId" name="patientId" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="Enter patient ID or leave blank for auto-generation">
+                        </div>
+
+                        <!-- Symptoms -->
+                        <div>
+                            <label for="symptoms" class="block text-sm font-medium text-gray-700 mb-2">
+                                Symptoms Description
+                            </label>
+                            <textarea id="symptoms" name="symptoms" rows="4"
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Describe the symptoms in detail..."></textarea>
+                        </div>
+
+                        <!-- Image Upload -->
+                        <div>
+                            <label for="imageUpload" class="block text-sm font-medium text-gray-700 mb-2">
+                                Medical Image (Optional)
+                            </label>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors">
+                                <input type="file" id="imageUpload" name="image" accept="image/*" class="hidden">
+                                <div class="space-y-2">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <div class="text-gray-600">
+                                        <span class="font-medium">Click to upload</span> or drag and drop
+                                    </div>
+                                    <p class="text-xs text-gray-500">PNG, JPG, JPEG up to 16MB</p>
+                                </div>
+                            </div>
+                            <div id="imagePreview" class="mt-4 hidden">
+                                <img id="previewImg" class="max-w-xs rounded-lg shadow-md" alt="Preview">
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="flex justify-center">
+                            <button type="submit" 
+                                    class="bg-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors focus:ring-4 focus:ring-purple-300">
+                                <span id="submitText">Get Diagnosis</span>
+                                <div id="loadingSpinner" class="loading inline-block ml-2">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="mb-12 hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-6">Diagnosis Results</h3>
+                    <div id="resultsContent" class="space-y-6">
+                        <!-- Results will be populated here -->
+                    </div>
+                    <div class="mt-6 flex justify-center space-x-4">
+                        <button id="downloadReport" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            Download Report
+                        </button>
+                        <button id="newDiagnosis" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                            New Diagnosis
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history" class="mb-12">
+            <div class="max-w-6xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Diagnosis History</h2>
+                    <p class="text-gray-600">View all previous diagnoses and their status</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symptoms</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diagnosis</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- History will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="mb-12">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">About This Application</h2>
+                    <div class="prose max-w-none">
+                        <p class="text-gray-600 mb-4">
+                            This medical diagnosis application uses advanced AI technology powered by Hugging Face's MedGemma model 
+                            to provide preliminary medical analysis. The system can analyze medical images and symptom descriptions 
+                            to offer diagnostic insights.
+                        </p>
+                        <div class="grid md:grid-cols-2 gap-6 mt-8">
+                            <div class="bg-purple-50 p-6 rounded-lg">
+                                <h3 class="text-lg font-semibold text-purple-800 mb-2">Image Analysis</h3>
+                                <p class="text-purple-700">Upload medical images for AI-powered analysis and diagnosis suggestions.</p>
+                            </div>
+                            <div class="bg-green-50 p-6 rounded-lg">
+                                <h3 class="text-lg font-semibold text-green-800 mb-2">Symptom Analysis</h3>
+                                <p class="text-green-700">Describe symptoms in detail for comprehensive AI analysis.</p>
+                            </div>
+                            <div class="bg-blue-50 p-6 rounded-lg">
+                                <h3 class="text-lg font-semibold text-blue-800 mb-2">Report Generation</h3>
+                                <p class="text-blue-700">Generate detailed PDF reports for each diagnosis.</p>
+                            </div>
+                            <div class="bg-orange-50 p-6 rounded-lg">
+                                <h3 class="text-lg font-semibold text-orange-800 mb-2">History Tracking</h3>
+                                <p class="text-orange-700">Maintain a complete history of all diagnoses and their status.</p>
+                            </div>
+                        </div>
+                        <div class="mt-8 p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                            <p class="text-yellow-800">
+                                <strong>Important:</strong> This application is for educational and research purposes only. 
+                                Always consult with qualified healthcare professionals for medical diagnosis and treatment.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p>&copy; 2024 Medical Diagnosis AI. All rights reserved.</p>
+            <p class="text-gray-400 mt-2">Powered by Hugging Face MedGemma</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let currentDiagnosisId = null;
+
+        // DOM elements
+        const diagnosisForm = document.getElementById('diagnosisForm');
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const resultsSection = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+        const submitText = document.getElementById('submitText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const downloadReport = document.getElementById('downloadReport');
+        const newDiagnosis = document.getElementById('newDiagnosis');
+        const historyTableBody = document.getElementById('historyTableBody');
+
+        // Image upload handling
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Drag and drop functionality
+        const dropZone = document.querySelector('.border-dashed');
+        
+        // Ajout : permettre le clic sur la zone pour ouvrir le sélecteur de fichiers
+        dropZone.addEventListener('click', function() {
+            imageUpload.click();
+        });
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('border-purple-400');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('border-purple-400');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            imageUpload.files = files;
+            
+            if (files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(files[0]);
+            }
+        }
+
+        // Form submission
+        diagnosisForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log('Form submitted');
+            
+            const formData = new FormData(diagnosisForm);
+            const patientId = formData.get('patientId') || '';
+            const symptoms = formData.get('symptoms') || '';
+            const imageFile = formData.get('image');
+
+            if (!symptoms && !imageFile) {
+                alert('Please provide either symptoms or an image for diagnosis.');
+                return;
+            }
+
+            // Show loading state
+            console.log('Setting loading state to true');
+            setLoadingState(true);
+
+            try {
+                const requestData = {
+                    patient_id: patientId,
+                    symptoms: symptoms
+                };
+
+                // Add image if provided
+                if (imageFile) {
+                    console.log('Processing image...');
+                    const base64Image = await fileToBase64(imageFile);
+                    requestData.image = base64Image;
+                    console.log('Image processed');
+                }
+
+                console.log('Sending request to API...');
+                const response = await fetch('/api/diagnose', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('Response received:', response.status);
+                const result = await response.json();
+                console.log('Result:', result);
+
+                if (result.success) {
+                    currentDiagnosisId = result.diagnosis.id;
+                    displayResults(result.diagnosis);
+                    loadDiagnosisHistory();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error during diagnosis:', error);
+                alert('An error occurred during diagnosis. Please try again.');
+            } finally {
+                console.log('Setting loading state to false');
+                setLoadingState(false);
+            }
+        });
+
+        // Helper function to convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Display results
+        function displayResults(diagnosis) {
+            const confidencePercent = (diagnosis.confidence * 100).toFixed(1);
+            const statusColor = getStatusColor(diagnosis.status);
+            
+            // Formater le diagnostic AI pour une meilleure lisibilité
+            const formattedDiagnosis = formatAIDiagnosis(diagnosis.diagnosis);
+            
+            resultsContent.innerHTML = `
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Patient Information</h4>
+                        <div class="space-y-2">
+                            <p><strong>Patient ID:</strong> ${diagnosis.patient_id}</p>
+                            <p><strong>Date:</strong> ${new Date(diagnosis.timestamp).toLocaleString()}</p>
+                            <p><strong>Status:</strong> <span class="px-2 py-1 rounded-full text-xs font-medium ${statusColor}">${diagnosis.status}</span></p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-2">Analysis Results</h4>
+                        <div class="space-y-2">
+                            <p><strong>Confidence:</strong> <span class="text-${confidencePercent >= 80 ? 'green' : confidencePercent >= 60 ? 'yellow' : 'red'}-600 font-semibold">${confidencePercent}%</span></p>
+                            ${diagnosis.image_path ? '<p><strong>Image:</strong> <span class="text-green-600">✓ Uploaded</span></p>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">Symptoms</h4>
+                    <p class="text-gray-700 bg-gray-50 p-3 rounded">${diagnosis.symptoms || 'No symptoms provided'}</p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2">AI Diagnosis</h4>
+                    <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                        ${formattedDiagnosis}
+                    </div>
+                </div>
+            `;
+            
+            resultsSection.classList.remove('hidden');
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Fonction pour formater le diagnostic AI
+        function formatAIDiagnosis(diagnosisText) {
+            if (!diagnosisText) return '<p class="text-gray-600">Aucun diagnostic disponible</p>';
+            
+            // Diviser le texte en sections
+            const sections = diagnosisText.split(/\d+\./).filter(section => section.trim());
+            
+            if (sections.length > 1) {
+                // Format structuré avec numérotation
+                const sectionTitles = [
+                    'Structures anatomiques visibles',
+                    'Anomalies ou lésions détectées',
+                    'Signes pathologiques observés',
+                    'Diagnostics différentiels probables',
+                    'Gravité apparente'
+                ];
+                
+                let formattedHTML = '';
+                sections.forEach((section, index) => {
+                    if (section.trim()) {
+                        const title = sectionTitles[index] || `Section ${index + 1}`;
+                        const content = section.trim();
+                        
+                        // Formater le contenu avec des puces si nécessaire
+                        const formattedContent = content
+                            .split('\n')
+                            .filter(line => line.trim())
+                            .map(line => {
+                                if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                                    return `<li class="ml-4">${line.trim().substring(1).trim()}</li>`;
+                                } else if (line.trim().match(/^[a-z]\)/i)) {
+                                    return `<li class="ml-4">${line.trim()}</li>`;
+                                } else {
+                                    return `<p class="mb-2">${line.trim()}</p>`;
+                                }
+                            })
+                            .join('');
+                        
+                        formattedHTML += `
+                            <div class="mb-4">
+                                <h5 class="font-semibold text-blue-800 mb-2">${title}</h5>
+                                <div class="text-gray-700">
+                                    ${formattedContent.includes('<li>') ? `<ul class="list-disc ml-4">${formattedContent}</ul>` : formattedContent}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                
+                return formattedHTML;
+            } else {
+                // Format simple si pas de structure numérotée
+                const formattedText = diagnosisText
+                    .split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                            return `<li class="ml-4">${line.trim().substring(1).trim()}</li>`;
+                        } else if (line.trim().match(/^[a-z]\)/i)) {
+                            return `<li class="ml-4">${line.trim()}</li>`;
+                        } else {
+                            return `<p class="mb-2">${line.trim()}</p>`;
+                        }
+                    })
+                    .join('');
+                
+                return formattedText.includes('<li>') ? `<ul class="list-disc ml-4">${formattedText}</ul>` : formattedText;
+            }
+        }
+
+        // Get status color
+        function getStatusColor(status) {
+            switch (status) {
+                case 'pending_review': return 'bg-yellow-100 text-yellow-800';
+                case 'confirmed': return 'bg-green-100 text-green-800';
+                case 'rejected': return 'bg-red-100 text-red-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Set loading state
+        function setLoadingState(loading) {
+            const submitButton = document.querySelector('button[type="submit"]');
+            
+            if (loading) {
+                submitText.textContent = 'Analyzing...';
+                loadingSpinner.classList.add('show');
+                submitButton.disabled = true;
+                submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                console.log('Loading state: ON');
+            } else {
+                submitText.textContent = 'Get Diagnosis';
+                loadingSpinner.classList.remove('show');
+                submitButton.disabled = false;
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                console.log('Loading state: OFF');
+            }
+        }
+
+        // Download report
+        downloadReport.addEventListener('click', async function() {
+            if (!currentDiagnosisId) {
+                alert('No diagnosis available for download.');
+                return;
+            }
+
+            try {
+                window.open(`/api/diagnoses/${currentDiagnosisId}/report`, '_blank');
+            } catch (error) {
+                console.error('Error downloading report:', error);
+                alert('Error downloading report. Please try again.');
+            }
+        });
+
+        // New diagnosis
+        newDiagnosis.addEventListener('click', function() {
+            diagnosisForm.reset();
+            imagePreview.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            currentDiagnosisId = null;
+            document.getElementById('diagnosis').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // Load diagnosis history
+        async function loadDiagnosisHistory() {
+            try {
+                const response = await fetch('/api/diagnoses');
+                const result = await response.json();
+
+                if (result.success) {
+                    displayHistory(result.diagnoses);
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        // Display history
+        function displayHistory(diagnoses) {
+            if (diagnoses.length === 0) {
+                historyTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            No diagnoses found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            historyTableBody.innerHTML = diagnoses.map(diagnosis => {
+                const confidencePercent = (diagnosis.confidence * 100).toFixed(1);
+                const statusColor = getStatusColor(diagnosis.status);
+                const date = new Date(diagnosis.timestamp).toLocaleDateString();
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${diagnosis.patient_id}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">${diagnosis.symptoms || 'N/A'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">${diagnosis.diagnosis}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${confidencePercent}%</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusColor}">${diagnosis.status}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${date}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="downloadDiagnosisReport('${diagnosis.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2">Report</button>
+                            <button onclick="viewDiagnosis('${diagnosis.id}')" class="text-green-600 hover:text-green-900">View</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Download diagnosis report
+        function downloadDiagnosisReport(diagnosisId) {
+            window.open(`/api/diagnoses/${diagnosisId}/report`, '_blank');
+        }
+
+        // View diagnosis
+        function viewDiagnosis(diagnosisId) {
+            // This could open a modal or navigate to a detailed view
+            alert('View functionality would be implemented here');
+        }
+
+        // Load history on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDiagnosisHistory();
+            
+            // S'assurer que le spinner est caché au chargement de la page
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            if (loadingSpinner) {
+                loadingSpinner.classList.remove('show');
+            }
+            
+            // S'assurer que le bouton est dans l'état normal
+            const submitButton = document.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+    </script>
+</body>
+</html> 

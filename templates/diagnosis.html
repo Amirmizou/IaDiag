@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic - Medical Diagnosis AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .loading {
+            display: none !important;
+            visibility: hidden;
+            opacity: 0;
+        }
+        .loading.show {
+            display: inline-block !important;
+            visibility: visible;
+            opacity: 1;
+        }
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+        .image-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        .diagnosis-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-left: 4px solid #3b82f6;
+        }
+        .confidence-high { color: #059669; }
+        .confidence-medium { color: #f59e0b; }
+        .confidence-low { color: #dc2626; }
+        .status-pending { color: #f59e0b; }
+        .status-confirmed { color: #059669; }
+        .status-rejected { color: #dc2626; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold">Medical Diagnosis AI</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm">Connecté en tant que {{ current_user.username }}</span>
+                    <a href="{{ url_for('dashboard') }}" class="text-white hover:text-purple-200 transition-colors">Tableau de bord</a>
+                    <a href="{{ url_for('logout') }}" class="text-white hover:text-purple-200 transition-colors">Déconnexion</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="container mx-auto px-6">
+            <div class="flex space-x-8">
+                <a href="{{ url_for('dashboard') }}" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium">
+                    Tableau de bord
+                </a>
+                <a href="{{ url_for('diagnosis_page') }}" class="py-4 px-2 border-b-2 border-purple-500 text-purple-600 font-medium">
+                    Nouveau diagnostic
+                </a>
+                <a href="#history" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium">
+                    Historique
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Diagnosis Section -->
+        <section id="diagnosis" class="mb-12">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Diagnostic médical IA</h2>
+                    <p class="text-gray-600 text-lg">Uploadez des images médicales ou décrivez les symptômes pour un diagnostic assisté par IA</p>
+                </div>
+
+                <!-- Diagnosis Form -->
+                <div class="bg-white rounded-lg shadow-lg p-8 card-hover">
+                    <form id="diagnosisForm" class="space-y-6">
+                        <!-- Patient ID -->
+                        <div>
+                            <label for="patientId" class="block text-sm font-medium text-gray-700 mb-2">
+                                ID Patient (Optionnel)
+                            </label>
+                            <input type="text" id="patientId" name="patientId" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="Entrez l'ID patient ou laissez vide pour auto-génération">
+                        </div>
+
+                        <!-- Symptoms -->
+                        <div>
+                            <label for="symptoms" class="block text-sm font-medium text-gray-700 mb-2">
+                                Description des symptômes
+                            </label>
+                            <textarea id="symptoms" name="symptoms" rows="4"
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Décrivez les symptômes en détail..."></textarea>
+                        </div>
+
+                        <!-- Image Upload -->
+                        <div>
+                            <label for="imageUpload" class="block text-sm font-medium text-gray-700 mb-2">
+                                Image médicale (Optionnel)
+                            </label>
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-400 transition-colors cursor-pointer" onclick="document.getElementById('imageUpload').click()">
+                                <input type="file" id="imageUpload" name="image" accept="image/*" class="hidden">
+                                <div class="space-y-2">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                    <div class="text-gray-600">
+                                        <span class="font-medium">Cliquez pour uploader</span> ou glissez-déposez
+                                    </div>
+                                    <p class="text-xs text-gray-500">PNG, JPG, JPEG jusqu'à 16MB</p>
+                                </div>
+                            </div>
+                            <div id="imagePreview" class="mt-4 hidden">
+                                <div class="relative inline-block">
+                                    <img id="previewImg" class="max-w-xs rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity" alt="Aperçu" onclick="openImageModal(this.src)">
+                                    <button type="button" onclick="removeImage()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600">
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="flex justify-center">
+                            <button type="submit" 
+                                    class="bg-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors focus:ring-4 focus:ring-purple-300">
+                                <span id="submitText">Obtenir le diagnostic</span>
+                                <div id="loadingSpinner" class="loading inline-block ml-2">
+                                    <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results" class="mb-12 hidden">
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-6">Résultats du diagnostic</h3>
+                    <div id="resultsContent" class="space-y-6">
+                        <!-- Les résultats seront affichés ici -->
+                    </div>
+                    <div class="mt-6 flex justify-center space-x-4">
+                        <button id="downloadReport" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            Télécharger le rapport
+                        </button>
+                        <button id="newDiagnosis" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                            Nouveau diagnostic
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- History Section -->
+        <section id="history" class="mb-12">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Historique des diagnostics</h2>
+                    <p class="text-gray-600">Consultez tous vos diagnostics précédents et leur statut</p>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Patient</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symptômes</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diagnostic</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confiance</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- L'historique sera chargé ici -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <img id="modalImage" class="modal-content" alt="Image médicale">
+    </div>
+
+    <script>
+        // Global variables
+        let currentDiagnosisId = null;
+
+        // DOM elements
+        const diagnosisForm = document.getElementById('diagnosisForm');
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const resultsSection = document.getElementById('results');
+        const resultsContent = document.getElementById('resultsContent');
+        const submitText = document.getElementById('submitText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const downloadReport = document.getElementById('downloadReport');
+        const newDiagnosis = document.getElementById('newDiagnosis');
+        const historyTableBody = document.getElementById('historyTableBody');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+
+        // Image upload handling
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Drag and drop functionality
+        const dropZone = document.querySelector('.border-dashed');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('border-purple-400', 'bg-purple-50');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('border-purple-400', 'bg-purple-50');
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                imageUpload.files = files;
+                const event = new Event('change');
+                imageUpload.dispatchEvent(event);
+            }
+        }
+
+        function removeImage() {
+            imageUpload.value = '';
+            imagePreview.classList.add('hidden');
+        }
+
+        function openImageModal(src) {
+            modalImage.src = src;
+            imageModal.classList.add('show');
+        }
+
+        function closeImageModal() {
+            imageModal.classList.remove('show');
+        }
+
+        // Form submission
+        diagnosisForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading state
+            submitText.textContent = 'Analyse en cours...';
+            loadingSpinner.classList.add('show');
+            
+            const formData = new FormData();
+            formData.append('patient_id', document.getElementById('patientId').value || 'PAT' + Date.now());
+            formData.append('symptoms', document.getElementById('symptoms').value);
+            
+            if (imageUpload.files[0]) {
+                formData.append('image', imageUpload.files[0]);
+            }
+            
+            try {
+                const response = await fetch('/diagnose', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentDiagnosisId = result.diagnosis_id;
+                    displayResults(result);
+                    resultsSection.classList.remove('hidden');
+                    loadHistory(); // Refresh history
+                } else {
+                    alert('Erreur: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Erreur lors de l\'analyse');
+            } finally {
+                // Reset loading state
+                submitText.textContent = 'Obtenir le diagnostic';
+                loadingSpinner.classList.remove('show');
+            }
+        });
+
+        function displayResults(result) {
+            const confidenceClass = result.confidence >= 0.8 ? 'confidence-high' : 
+                                  result.confidence >= 0.6 ? 'confidence-medium' : 'confidence-low';
+            
+            const statusClass = result.status === 'confirmed' ? 'status-confirmed' : 
+                              result.status === 'rejected' ? 'status-rejected' : 'status-pending';
+            
+            resultsContent.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Image Section -->
+                    <div class="space-y-4">
+                        <h4 class="text-lg font-semibold text-gray-800">Image médicale</h4>
+                        ${result.image_path ? `
+                            <div class="relative">
+                                <img src="${result.image_path}" alt="Image médicale" 
+                                     class="w-full rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity"
+                                     onclick="openImageModal('${result.image_path}')">
+                                <div class="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                                    Cliquez pour agrandir
+                                </div>
+                            </div>
+                        ` : '<p class="text-gray-500 italic">Aucune image fournie</p>'}
+                    </div>
+                    
+                    <!-- Diagnosis Section -->
+                    <div class="space-y-4">
+                        <h4 class="text-lg font-semibold text-gray-800">Informations du diagnostic</h4>
+                        <div class="diagnosis-section p-4 rounded-lg">
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-600">ID Patient:</span>
+                                    <p class="text-gray-800">${result.patient_id}</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Confiance IA:</span>
+                                    <p class="${confidenceClass} font-semibold">${(result.confidence * 100).toFixed(1)}%</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Statut:</span>
+                                    <p class="${statusClass} font-semibold">${result.status.replace('_', ' ').toUpperCase()}</p>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Date:</span>
+                                    <p class="text-gray-800">${new Date(result.created_at).toLocaleString('fr-FR')}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Symptoms -->
+                ${result.symptoms ? `
+                    <div class="mt-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3">Symptômes décrits</h4>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <p class="text-gray-700">${result.symptoms}</p>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- AI Diagnosis -->
+                <div class="mt-6">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-3">Diagnostic par IA</h4>
+                    <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+                        <div class="prose max-w-none">
+                            ${formatDiagnosisText(result.diagnosis)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatDiagnosisText(text) {
+            if (!text) return '<p class="text-gray-500 italic">Aucun diagnostic disponible</p>';
+            
+            // Split by numbered sections
+            const sections = text.split(/\d+\./);
+            if (sections.length > 1) {
+                const sectionTitles = [
+                    'Structures anatomiques visibles',
+                    'Anomalies ou lésions détectées',
+                    'Signes pathologiques observés',
+                    'Diagnostics différentiels probables',
+                    'Gravité apparente'
+                ];
+                
+                let formatted = '';
+                sections.forEach((section, index) => {
+                    if (section.trim()) {
+                        const title = sectionTitles[index] || `Section ${index}`;
+                        formatted += `
+                            <div class="mb-4">
+                                <h5 class="font-semibold text-blue-800 mb-2">${title}</h5>
+                                <div class="pl-4">
+                                    ${section.trim().split('\n').map(line => 
+                                        line.trim() ? `<p class="mb-1">• ${line.trim()}</p>` : ''
+                                    ).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                return formatted;
+            } else {
+                return `<p class="text-gray-700">${text}</p>`;
+            }
+        }
+
+        // Download report
+        downloadReport.addEventListener('click', async function() {
+            if (!currentDiagnosisId) return;
+            
+            try {
+                const response = await fetch(`/download_report/${currentDiagnosisId}`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `diagnostic_${currentDiagnosisId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    alert('Erreur lors du téléchargement du rapport');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Erreur lors du téléchargement');
+            }
+        });
+
+        // New diagnosis
+        newDiagnosis.addEventListener('click', function() {
+            diagnosisForm.reset();
+            imagePreview.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Load history
+        async function loadHistory() {
+            try {
+                const response = await fetch('/get_diagnoses');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayHistory(data.diagnoses);
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function displayHistory(diagnoses) {
+            historyTableBody.innerHTML = diagnoses.map(diagnosis => {
+                const confidenceClass = diagnosis.confidence >= 0.8 ? 'confidence-high' : 
+                                      diagnosis.confidence >= 0.6 ? 'confidence-medium' : 'confidence-low';
+                const statusClass = diagnosis.status === 'confirmed' ? 'status-confirmed' : 
+                                  diagnosis.status === 'rejected' ? 'status-rejected' : 'status-pending';
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${diagnosis.patient_id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            ${diagnosis.image_path ? `
+                                <img src="${diagnosis.image_path}" alt="Image" 
+                                     class="w-12 h-12 rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                     onclick="openImageModal('${diagnosis.image_path}')">
+                            ` : '<span class="text-gray-400">-</span>'}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                            ${diagnosis.symptoms || '-'}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                            ${diagnosis.diagnosis ? diagnosis.diagnosis.substring(0, 100) + '...' : '-'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="${confidenceClass} font-semibold">${(diagnosis.confidence * 100).toFixed(1)}%</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="${statusClass} font-semibold">${diagnosis.status.replace('_', ' ').toUpperCase()}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${new Date(diagnosis.created_at).toLocaleDateString('fr-FR')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button onclick="downloadDiagnosisReport('${diagnosis._id}')" 
+                                    class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                📄 Rapport
+                            </button>
+                            <button onclick="viewDiagnosis('${diagnosis._id}')" 
+                                    class="text-green-600 hover:text-green-900">
+                                👁️ Voir
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function downloadDiagnosisReport(diagnosisId) {
+            try {
+                const response = await fetch(`/download_report/${diagnosisId}`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `diagnostic_${diagnosisId}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    alert('Erreur lors du téléchargement du rapport');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Erreur lors du téléchargement');
+            }
+        }
+
+        async function viewDiagnosis(diagnosisId) {
+            try {
+                const response = await fetch(`/get_diagnosis/${diagnosisId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentDiagnosisId = diagnosisId;
+                    displayResults(data.diagnosis);
+                    resultsSection.classList.remove('hidden');
+                    window.scrollTo({ top: resultsSection.offsetTop, behavior: 'smooth' });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Erreur lors du chargement du diagnostic');
+            }
+        }
+
+        // Load history on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadHistory();
+        });
+    </script>
+</body>
+</html> 
